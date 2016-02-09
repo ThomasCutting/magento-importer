@@ -106,120 +106,123 @@ class BatchMagentoImporter
      */
     protected function compileOrder($index, $base_order)
     {
-        // get the recent website identification number
-        $website_id = Mage::app()->getWebsite()->getId();
+        if ($base_order['order_id'] !== '') {
+            // get the recent website identification number
+            $website_id = Mage::app()->getWebsite()->getId();
 
-        // get the store object ( instance of? )
-        $store = Mage::app()->getStore();
+            // get the store object ( instance of? )
+            $store = Mage::app()->getStore();
 
-        // build a new quote object.
-        $quote = Mage::getModel('sales/quote')->setStoreId($store->getId());
+            // build a new quote object.
+            $quote = Mage::getModel('sales/quote')->setStoreId($store->getId());
 
-        // set order currency
-        $quote->setCurrency($base_order['order_currency_code']);
+            // set order currency
+            $quote->setCurrency($base_order['order_currency_code']);
 
-        // attempt to see if the order's email address is current
-        if(!$this->customerExists($base_order['email'])) {
-            // build out new customer.
-            $customer = $this->buildNewCustomer($base_order['email'],$base_order['firstname'],$base_order['lastname']);
-        } else {
-            $customer = $this->customerExists($base_order['email']);
+            // attempt to see if the order's email address is current
+            if (!$this->customerExists($base_order['email'])) {
+                // build out new customer.
+                $customer = $this->buildNewCustomer($base_order['email'], $base_order['firstname'], $base_order['lastname']);
+            } else {
+                $customer = $this->customerExists($base_order['email']);
+            }
+
+            // assign the above quote to the admin
+            $quote->assignCustomer($customer);
+
+            // product loop - traversal adds product to quote
+            foreach ($this->traverseSameOrder($index, $base_order) as $base_product) {
+                $product = Mage::getModel('catalog/product')->getIdBySku($base_product['product_sku']);
+                $quote->addProduct($product, new Varien_Object([
+                    'qty' => $base_order['qty_ordered']
+                ]));
+            }
+
+
+            // set the sales billing address
+            $billingAddress = $quote->getBillingAddress()->addData([
+                'customer_address_id' => '',
+                'prefix' => $base_order['billing_prefix'],
+                'firstname' => $base_order['billing_firstname'],
+                'middlename' => $base_order['billing_middlename'],
+                'lastname' => $base_order['billing_lastname'],
+                'suffix' => $base_order['billing_suffix'],
+                'company' => $base_order['billing_company'],
+                'street' => $base_order['billing_street_full'],
+                'city' => $base_order['billing_city'],
+                'country_id' => $base_order['billing_country'],
+                'region' => $base_order['billing_region'],
+                'postcode' => $base_order['billing_postcode'],
+                'telephone' => $base_order['billing_telephone'],
+                'fax' => $base_order['billing_fax'],
+                'vat_id' => '',
+                'save_in_address_book' => 1
+            ]);
+
+            // set the sales shipping address
+            $shippingAddress = $quote->getShippingAddress()->addData([
+                'customer_address_id' => '',
+                'prefix' => $base_order['shipping_prefix'],
+                'firstname' => $base_order['shipping_firstname'],
+                'middlename' => $base_order['shipping_middlename'],
+                'lastname' => $base_order['shipping_lastname'],
+                'suffix' => $base_order['shipping_suffix'],
+                'company' => $base_order['shipping_company'],
+                'street' => $base_order['shipping_street_full'],
+                'city' => $base_order['shipping_city'],
+                'country_id' => $base_order['shipping_country'],
+                'region' => $base_order['shipping_region'],
+                'postcode' => $base_order['shipping_postcode'],
+                'telephone' => $base_order['shipping_telephone'],
+                'fax' => $base_order['shipping_fax'],
+                'vat_id' => '',
+                'save_in_address_book' => 1
+            ]);
+
+            // collect rates, and set shipping and payment method
+            $shippingAddress->setCollectShippingRates(true)
+                ->collectShippingRates()
+                ->setShippingMethod($base_order['shipping_method'])
+                ->setPaymentMethod($base_order['payment_method']);
+
+            // set sales order payment
+            $quote->getPayment()->importData([
+                'method' => $base_order['payment_method']
+            ]);
+
+            // collect all totals and save the quote
+            $quote->collectTotals()->save();
+
+            // create order from quote
+            $service = Mage::getModel('sales/service_quote', $quote);
+
+            // submit the service quote
+            $service->submitAll();
+
+            // directly affiliate an id with the realOrderId.
+            $increment_id = $service->getOrder()->getRealOrderId();
+
+            // setup order object and set order status.
+            $order = $service->getOrder();
+            $order->setStatus($base_order['order_status']);
+
+            // save the order ( w/ added & configured status )
+            $order->save();
+
+            // generate array with quote, service, order, and increment id.
+            $compiled_order = [
+                "quote" => $quote,
+                "service" => $service,
+                "order" => $order,
+                "increment_id" => $increment_id
+            ];
+
+            // push the generated array.
+            array_push($this->compiled_orders, $compiled_order);
+
+            return $increment_id;
         }
-
-        // assign the above quote to the admin
-        $quote->assignCustomer($customer);
-
-        // product loop - traversal adds product to quote
-        foreach ($this->traverseSameOrder($index, $base_order) as $base_product) {
-            $product = Mage::getModel('catalog/product')->getIdBySku($base_product['product_sku']);
-            $quote->addProduct($product, new Varien_Object([
-                'qty' => $base_order['qty_ordered']
-            ]));
-        }
-
-
-        // set the sales billing address
-        $billingAddress = $quote->getBillingAddress()->addData([
-            'customer_address_id' => '',
-            'prefix' => $base_order['billing_prefix'],
-            'firstname' => $base_order['billing_firstname'],
-            'middlename' => $base_order['billing_middlename'],
-            'lastname' => $base_order['billing_lastname'],
-            'suffix' => $base_order['billing_suffix'],
-            'company' => $base_order['billing_company'],
-            'street' => $base_order['billing_street_full'],
-            'city' => $base_order['billing_city'],
-            'country_id' => $base_order['billing_country'],
-            'region' => $base_order['billing_region'],
-            'postcode' => $base_order['billing_postcode'],
-            'telephone' => $base_order['billing_telephone'],
-            'fax' => $base_order['billing_fax'],
-            'vat_id' => '',
-            'save_in_address_book' => 1
-        ]);
-
-        // set the sales shipping address
-        $shippingAddress = $quote->getShippingAddress()->addData([
-            'customer_address_id' => '',
-            'prefix' => $base_order['shipping_prefix'],
-            'firstname' => $base_order['shipping_firstname'],
-            'middlename' => $base_order['shipping_middlename'],
-            'lastname' => $base_order['shipping_lastname'],
-            'suffix' => $base_order['shipping_suffix'],
-            'company' => $base_order['shipping_company'],
-            'street' => $base_order['shipping_street_full'],
-            'city' => $base_order['shipping_city'],
-            'country_id' => $base_order['shipping_country'],
-            'region' => $base_order['shipping_region'],
-            'postcode' => $base_order['shipping_postcode'],
-            'telephone' => $base_order['shipping_telephone'],
-            'fax' => $base_order['shipping_fax'],
-            'vat_id' => '',
-            'save_in_address_book' => 1
-        ]);
-
-        // collect rates, and set shipping and payment method
-        $shippingAddress->setCollectShippingRates(true)
-            ->collectShippingRates()
-            ->setShippingMethod($base_order['shipping_method'])
-            ->setPaymentMethod($base_order['payment_method']);
-
-        // set sales order payment
-        $quote->getPayment()->importData([
-            'method' => $base_order['payment_method']
-        ]);
-
-        // collect all totals and save the quote
-        $quote->collectTotals()->save();
-
-        // create order from quote
-        $service = Mage::getModel('sales/service_quote', $quote);
-
-        // submit the service quote
-        $service->submitAll();
-
-        // directly affiliate an id with the realOrderId.
-        $increment_id = $service->getOrder()->getRealOrderId();
-
-        // setup order object and set order status.
-        $order = $service->getOrder();
-        $order->setStatus($base_order['order_status']);
-
-        // save the order ( w/ added & configured status )
-        $order->save();
-
-        // generate array with quote, service, order, and increment id.
-        $compiled_order = [
-            "quote" => $quote,
-            "service" => $service,
-            "order" => $order,
-            "increment_id" => $increment_id
-        ];
-
-        // push the generated array.
-        array_push($this->compiled_orders, $compiled_order);
-
-        return $increment_id;
+        return false;
     }
 
     /**
