@@ -127,18 +127,22 @@ class BatchMagentoImporter
         // set order currency
         $quote->setCurrency($base_order['order_currency_code']);
 
-        // build out the admin customer by email ( this should be held in this->admin->email? )
-        $customer = Mage::getModel('customer/customer')->setWebsiteId($website_id)
-            ->loadByEmail($this->admin_user_email);
+        // attempt to see if the order's email address is current
+        if(!$this->customerExists($base_order['email'])) {
+            // build out new customer.
+            $customer = $this->buildNewCustomer($base_order['email'],$base_order['firstname'],$base_order['lastname']);
+        } else {
+            $customer = $this->customerExists($base_order['email']);
+        }
 
         // assign the above quote to the admin
         $quote->assignCustomer($customer);
 
         // product loop - traversal adds product to quote
-        foreach($this->traverseSameOrder($index,$base_order) as $base_product) {
+        foreach ($this->traverseSameOrder($index, $base_order) as $base_product) {
             $product = Mage::getModel('catalog/product')->getIdBySku($base_product['product_sku']);
-            $quote->addProduct($product,new Varien_Object([
-                'qty' =>  $base_order['qty_ordered']
+            $quote->addProduct($product, new Varien_Object([
+                'qty' => $base_order['qty_ordered']
             ]));
         }
 
@@ -369,6 +373,5 @@ class BatchMagentoImporter
     {
         return Mage::getSingleton('adminhtml/session_quote');
     }
-
 }
 
