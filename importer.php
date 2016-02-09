@@ -175,20 +175,20 @@ class BatchMagentoImporter
 
         // collect rates, and set shipping and payment method
         $shippingAddress->setCollectShippingRates(true)
-                        ->collectShippingRates()
-                        ->setShippingMethod($base_order['shipping_method'])
-                        ->setPaymentMethod($base_order['payment_method']);
+            ->collectShippingRates()
+            ->setShippingMethod($base_order['shipping_method'])
+            ->setPaymentMethod($base_order['payment_method']);
 
         // set sales order payment
         $quote->getPayment()->importData([
-           'method' => $base_order['payment_method']
+            'method' => $base_order['payment_method']
         ]);
 
         // collect all totals and save the quote
         $quote->collectTotals()->save();
 
         // create order from quote
-        $service = Mage::getModel('sales/service_quote',$quote);
+        $service = Mage::getModel('sales/service_quote', $quote);
 
         // submit the service quote
         $service->submitAll();
@@ -212,9 +212,73 @@ class BatchMagentoImporter
         ];
 
         // push the generated array.
-        array_push($this->compiled_orders,$compiled_order);
+        array_push($this->compiled_orders, $compiled_order);
 
         return $increment_id;
+    }
+
+    /**
+     * traverseSameOrder
+     * -
+     * This method takes an index, and a base order array.
+     *
+     * @param int $index
+     * @param $base_order
+     * @return array
+     */
+    protected function traverseSameOrder($index = 0, $base_order)
+    {
+        // product (temp) array.  This is to be returned.
+        $product_arr = [];
+
+        // loop through the import order array from current index to keep appending to product array.
+        for ($i = $index; $i <= count($this->import_order_array) - 1; $i++) {
+            if (!$this->_traverseSameOrder($index, $base_order['order_id'])) {
+                // that's the only item for the user.  Go ahead and don't do anything to the product_arr.
+            } else {
+                // there is an item waiting enqueue.
+                $product = [
+                    'product_sku' => $this->import_order_array[$index++]['product_sku'],
+                    'product_name' => $this->import_order_array[$index++]['product_name'],
+                    'product_type' => $this->import_order_array[$index++]['product_type'],
+                    'product_tax_amount' => $this->import_order_array[$index++]['product_tax_amount'],
+                    'product_base_tax_amount' => $this->import_order_array[$index++]['product_base_tax_amount'],
+                    'product_tax_percent' => $this->import_order_array[$index++]['product_tax_percent'],
+                    'product_discount' => $this->import_order_array[$index++]['product_discount'],
+                    'product_base_discount' => $this->import_order_array[$index++]['product_base_discount'],
+                    'product_discount_percent' => $this->import_order_array[$index++]['product_discount_percent'],
+                    'product_option' => $this->import_order_array[$index++]['product_option']
+                ];
+                // push that specific item to the array of products
+                array_push($product_arr, $product);
+            }
+        }
+
+        // return the temporary product array
+        return $product_arr;
+    }
+
+    /**
+     * _traverseSameOrder
+     * -
+     * This method is run recursively.  Return a boolean based on if similar order_id or not.
+     *
+     * @param int $index
+     * @param $order_id
+     * @return array
+     */
+    private function _traverseSameOrder($index = 0, $order_id)
+    {
+        if ($this->import_order_array[$index++]['order_id'] != $order_id) {
+            if ($this->import_order_array[$index++]['order_id'] == '') {
+                // run this method & again, check to see if familiarities are included.
+                return $this->_traverseSameOrder($index++, $order_id);
+            } else {
+                return $index;
+            }
+        } else {
+            return $index;
+        }
     }
 
     /**
