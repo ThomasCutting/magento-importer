@@ -175,8 +175,8 @@ class BatchMagentoImporter
             'postcode' => $base_order['shipping_postcode'],
             'telephone' => $base_order['shipping_telephone'],
             'fax' => $base_order['shipping_fax'],
-            /*            'vat_id' => '',
-                        'save_in_address_book' => 1*/
+            'vat_id' => '',
+            'save_in_address_book' => 1
         ]);
 
         // collect rates, and set shipping and payment method
@@ -202,7 +202,7 @@ class BatchMagentoImporter
         // directly affiliate an id with the realOrderId.
         $increment_id = $service->getOrder()->getRealOrderId();
 
-        // setup order object and
+        // setup order object and set order status.
         $order = $service->getOrder();
         $order->setStatus($base_order['order_status']);
 
