@@ -26,6 +26,12 @@ class BatchMagentoImporter
     private $compiled_orders;
 
     /**
+     * @var $temp_product_arr
+     * This variable holds any temporary products ( within the compilation process. )
+     */
+    private $temp_product_arr;
+
+    /**
      * BatchMagentoImporter constructor.
      * --
      * The constructor that handles all pre-processing
@@ -89,6 +95,7 @@ class BatchMagentoImporter
     public function compileOrders()
     {
         $index = 0;
+
         foreach ($this->import_order_array as $order) {
             $this->compileOrder($index, $order);
             $index++;
@@ -107,9 +114,6 @@ class BatchMagentoImporter
     protected function compileOrder($index, $base_order)
     {
         if ($base_order['order_id'] !== '') {
-            // get the recent website identification number
-            $website_id = Mage::app()->getWebsite()->getId();
-
             // get the store object ( instance of? )
             $store = Mage::app()->getStore();
 
@@ -132,10 +136,26 @@ class BatchMagentoImporter
 
             // product loop - traversal adds product to quote
             foreach ($this->traverseSameOrder($index, $base_order) as $base_product) {
-                $product = Mage::getModel('catalog/product')->getIdBySku($base_product['product_sku']);
-                $quote->addProduct($product, new Varien_Object([
-                    'qty' => $base_order['qty_ordered']
-                ]));
+                // get the current product id
+                $product_id = Mage::getModel('catalog/product')->getIdBySku($base_product['product_sku']);
+
+                // get the product model from the (above) id.
+                $product = Mage::getModel('catalog/product')->load($product_id);
+
+                // if the product exists?
+                if($product) {
+
+                    // build a new Varien request ( product id, qty ordered )
+                    $request = new Varien_Object();
+                    $request->setData([
+                        'product' => $product_id,
+                        'qty' => $base_order['qty_ordered']
+                    ]);
+
+                    // add product to the quote ( with product object, request object )
+                    $quote->addProduct($product,$request);
+
+                }
             }
 
 
@@ -237,33 +257,13 @@ class BatchMagentoImporter
     protected function traverseSameOrder($index = 0, $base_order)
     {
         // product (temp) array.  This is to be returned.
-        $product_arr = [];
+        $this->temp_product_arr = [];
 
-        // loop through the import order array from current index to keep appending to product array.
-        for ($i = $index; $i <= count($this->import_order_array) - 1; $i++) {
-            if ($this->_traverseSameOrder($i, $base_order['order_id']) == $i) {
-                // that's the only item for the user.  Go ahead and don't do anything to the product_arr.
-            } else {
-                // there is an item waiting enqueue.
-                $product = [
-                    'product_sku' => $this->import_order_array[$index++]['product_sku'],
-                    'product_name' => $this->import_order_array[$index++]['product_name'],
-                    'product_type' => $this->import_order_array[$index++]['product_type'],
-                    'product_tax_amount' => $this->import_order_array[$index++]['product_tax_amount'],
-                    'product_base_tax_amount' => $this->import_order_array[$index++]['product_base_tax_amount'],
-                    'product_tax_percent' => $this->import_order_array[$index++]['product_tax_percent'],
-                    'product_discount' => $this->import_order_array[$index++]['product_discount'],
-                    'product_base_discount' => $this->import_order_array[$index++]['product_base_discount'],
-                    'product_discount_percent' => $this->import_order_array[$index++]['product_discount_percent'],
-                    'product_option' => $this->import_order_array[$index++]['product_option']
-                ];
-                // push that specific item to the array of products
-                array_push($product_arr, $product);
-            }
-        }
+        // start the recursive method at our above index.
+        $this->_traverseSameOrder($index,$base_order['order_id']);
 
-        // return the temporary product array
-        return $product_arr;
+        // return the temporary product array.
+        return $this->temp_product_arr;
     }
 
     /**
@@ -277,14 +277,32 @@ class BatchMagentoImporter
      */
     private function _traverseSameOrder($index = 0, $order_id)
     {
-        if ($this->import_order_array[$index++]['order_id'] != $order_id) {
-            if ($this->import_order_array[$index++]['order_id'] == '') {
-                // run this method & again, check to see if familiarities are included.
-                return $this->_traverseSameOrder($index++, $order_id);
-            } else {
-                return $index;
-            }
+        // pull in the order id.
+        $o_id = $this->import_order_array[$index]['order_id'];
+
+        // if the order id is blank|order_id
+        if($o_id == '' || $o_id == $order_id) {
+
+            // push to the temporary array.
+            array_push($this->temp_product_arr,[
+                'product_sku' => $this->import_order_array[$index]['product_sku'],
+                'product_name' => $this->import_order_array[$index]['product_name'],
+                'product_type' => $this->import_order_array[$index]['product_type'],
+                'product_tax_amount' => $this->import_order_array[$index]['product_tax_amount'],
+                'product_base_tax_amount' => $this->import_order_array[$index]['product_base_tax_amount'],
+                'product_tax_percent' => $this->import_order_array[$index]['product_tax_percent'],
+                'product_discount' => $this->import_order_array[$index]['product_discount'],
+                'product_base_discount' => $this->import_order_array[$index]['product_base_discount'],
+                'product_discount_percent' => $this->import_order_array[$index]['product_discount_percent'],
+                'product_option' => $this->import_order_array[$index]['product_option']
+            ]);
+
+            // run this method & again, check to see if familiarities are included.
+            return $this->_traverseSameOrder($index + 1,$order_id);
+
         } else {
+
+            // return the index for the latitude movement.
             return $index;
         }
     }
@@ -301,6 +319,9 @@ class BatchMagentoImporter
     {
         // build customer from model
         $customer = Mage::getModel('customer/customer');
+
+        // set the website ID, re: the customer.
+        $customer->setWebsiteId(Mage::app()->getWebsite()->getId());
 
         // load customer ( by provided email )
         $customer->loadByEmail($email);
