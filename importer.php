@@ -99,8 +99,10 @@ class BatchMagentoImporter
      */
     public function compileOrders()
     {
+        $index = 0;
         foreach ($this->import_order_array as $order) {
-            $this->compileOrder($order);
+            $this->compileOrder($index,$order);
+            $index++;
         }
     }
 
@@ -108,8 +110,12 @@ class BatchMagentoImporter
      * compileOrder
      * --
      * This method compiles an order ( takes all data within order, and builds out a Magento order model out with it. )
+     *
+     * @param $index
+     * @param $base_order
+     * @return mixed
      */
-    protected function compileOrder($base_order)
+    protected function compileOrder($index, $base_order)
     {
         // get the recent website identification number
         $website_id = Mage::app()->getWebsite()->getId();
@@ -130,8 +136,14 @@ class BatchMagentoImporter
         // assign the above quote to the admin
         $quote->assignCustomer($customer);
 
-        // product loop
-        // ... ( issue - look ahead feature for product gen. & add to quote feature w/ product(s)).
+        // product loop - traversal adds product to quote
+        foreach($this->traverseSameOrder($index,$base_order) as $base_product) {
+            $product = Mage::getModel('catalog/product')->getIdBySku($base_product['product_sku']);
+            $quote->addProduct($product,new Varien_Object([
+                'qty' =>  $base_order['qty_ordered']
+            ]));
+        }
+
 
         // set the sales billing address
         $billingAddress = $quote->getBillingAddress()->addData([
