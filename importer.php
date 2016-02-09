@@ -99,7 +99,7 @@ class BatchMagentoImporter
     {
         $index = 0;
         foreach ($this->import_order_array as $order) {
-            $this->compileOrder($index,$order);
+            $this->compileOrder($index, $order);
             $index++;
         }
     }
@@ -321,7 +321,7 @@ class BatchMagentoImporter
      * @param $last_name
      * @return bool|false|Mage_Core_Model_Abstract
      */
-    protected function buildNewCustomer($email,$first_name,$last_name)
+    protected function buildNewCustomer($email, $first_name, $last_name)
     {
         // build customer variable from model
         $customer = Mage::getModel('customer/customer');
@@ -337,8 +337,8 @@ class BatchMagentoImporter
         // attempt to save the customer
         try {
             $customer->save();
-        } catch(Exception $e) {
-            error_log('buildNewCustomer - failed - '.$e->getTraceAsString());
+        } catch (Exception $e) {
+            error_log('buildNewCustomer - failed - ' . $e->getTraceAsString());
             return false;
         }
 
