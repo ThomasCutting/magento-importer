@@ -175,20 +175,20 @@ class BatchMagentoImporter
 
         // collect rates, and set shipping and payment method
         $shippingAddress->setCollectShippingRates(true)
-                        ->collectShippingRates()
-                        ->setShippingMethod($base_order['shipping_method'])
-                        ->setPaymentMethod($base_order['payment_method']);
+            ->collectShippingRates()
+            ->setShippingMethod($base_order['shipping_method'])
+            ->setPaymentMethod($base_order['payment_method']);
 
         // set sales order payment
         $quote->getPayment()->importData([
-           'method' => $base_order['payment_method']
+            'method' => $base_order['payment_method']
         ]);
 
         // collect all totals and save the quote
         $quote->collectTotals()->save();
 
         // create order from quote
-        $service = Mage::getModel('sales/service_quote',$quote);
+        $service = Mage::getModel('sales/service_quote', $quote);
 
         // submit the service quote
         $service->submitAll();
