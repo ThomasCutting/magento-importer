@@ -99,7 +99,7 @@ class BatchMagentoImporter
     {
         $index = 0;
         foreach ($this->import_order_array as $order) {
-            $this->compileOrder($index,$order);
+            $this->compileOrder($index, $order);
             $index++;
         }
     }
@@ -127,18 +127,22 @@ class BatchMagentoImporter
         // set order currency
         $quote->setCurrency($base_order['order_currency_code']);
 
-        // build out the admin customer by email ( this should be held in this->admin->email? )
-        $customer = Mage::getModel('customer/customer')->setWebsiteId($website_id)
-            ->loadByEmail($this->admin_user_email);
+        // attempt to see if the order's email address is current
+        if(!$this->customerExists($base_order['email'])) {
+            // build out new customer.
+            $customer = $this->buildNewCustomer($base_order['email'],$base_order['firstname'],$base_order['lastname']);
+        } else {
+            $customer = $this->customerExists($base_order['email']);
+        }
 
         // assign the above quote to the admin
         $quote->assignCustomer($customer);
 
         // product loop - traversal adds product to quote
-        foreach($this->traverseSameOrder($index,$base_order) as $base_product) {
+        foreach ($this->traverseSameOrder($index, $base_order) as $base_product) {
             $product = Mage::getModel('catalog/product')->getIdBySku($base_product['product_sku']);
-            $quote->addProduct($product,new Varien_Object([
-                'qty' =>  $base_order['qty_ordered']
+            $quote->addProduct($product, new Varien_Object([
+                'qty' => $base_order['qty_ordered']
             ]));
         }
 
@@ -292,6 +296,61 @@ class BatchMagentoImporter
     }
 
     /**
+     * customerExists
+     * -
+     * This method checks for a user, if exists - returns them, if not - returns false.
+     *
+     * @param $email
+     * @return bool|false|Mage_Core_Model_Abstract
+     */
+    protected function customerExists($email)
+    {
+        // build customer from model
+        $customer = Mage::getModel('customer/customer');
+
+        // load customer ( by provided email )
+        $customer->loadByEmail($email);
+
+        // either return the customer|false
+        return $customer->getId() ? $customer : false;
+    }
+
+    /**
+     * buildNewCustomer
+     * -
+     * This method builds, generates, and saves a new Mage customer model.
+     *
+     * @param $email
+     * @param $first_name
+     * @param $last_name
+     * @return bool|false|Mage_Core_Model_Abstract
+     */
+    protected function buildNewCustomer($email, $first_name, $last_name)
+    {
+        // build customer variable from model
+        $customer = Mage::getModel('customer/customer');
+
+        // set all current variables
+        $customer
+            ->setWebsiteId(Mage::app()->getWebsite()->getId())
+            ->setStore(Mage::app()->getStore())
+            ->setFirstName($first_name)
+            ->setLastName($last_name)
+            ->setEmail($email);
+
+        // attempt to save the customer
+        try {
+            $customer->save();
+        } catch (Exception $e) {
+            error_log('buildNewCustomer - failed - ' . $e->getTraceAsString());
+            return false;
+        }
+
+        // after save - return the new customer.
+        return $customer;
+    }
+
+    /**
      * _getOrderCreateModel
      * -
      * Magento based method that pulls in the 'adminhtml/sales_order_create' singleton model
@@ -314,6 +373,5 @@ class BatchMagentoImporter
     {
         return Mage::getSingleton('adminhtml/session_quote');
     }
-
 }
 
