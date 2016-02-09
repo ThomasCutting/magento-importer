@@ -9,28 +9,28 @@ This package includes a `BatchFileReader` , `BatchCSVProcessor`, and a `BatchMag
 ## Usage
 
 Define a certain chunk-size. ( This amount will set the batch-reading pace of the resource within the `BatchFileReader`. )
-```
+```php
 define('CHUNK_SIZE',1024*1024);
 ```
 
 Generate the file resource
-```
+```php
 $file = new BatchFileReader(__DIR__.'/file.csv',CHUNK_SIZE);
 ```
 
 Process the above resource into a combined, resource array.
-```
+```php
 $import_order_array = BatchCSVProcessor::processResourceToArray($file->getFileResource());
 ```
 
 Go ahead and create a new instance of the importer class.
-```
+```php
 $importer = new BatchMagentoImporter($import_order_array,__DIR__.'/public_html/shop/app');
 ```
 
 Make sure your Magento `app` directory is included correctly.  If so, compile the orders that are included within the `$import_order_array`. ( The compilation process builds Magento orders, and saves them with the status of the imported order. )
 
-```
+```php
 if($importer->testMagentoConnection()) {
 	$importer->compileOrders();
 } else {
@@ -39,7 +39,7 @@ if($importer->testMagentoConnection()) {
 ```
 
 The `above code` should be written within a blank PHP file.  To make sure you have access to the aforementioned classes, use the line below.
-```
+```php
 require_once '/path/to/importer/autoload.php';
 ```
 
