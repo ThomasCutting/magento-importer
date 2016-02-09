@@ -25,7 +25,7 @@ $import_order_array = BatchCSVProcessor::processResourceToArray($file->getFileRe
 
 Go ahead and create a new instance of the importer class.
 ```php
-$importer = new BatchMagentoImporter($import_order_array,'admin@email.com',__DIR__.'/public_html/shop/app');
+$importer = new BatchMagentoImporter($import_order_array,__DIR__.'/public_html/shop/app');
 ```
 
 Make sure your Magento `app` directory is included correctly.  If so, compile the orders that are included within the `$import_order_array`. ( The compilation process builds Magento orders, and saves them with the status of the imported order. )
