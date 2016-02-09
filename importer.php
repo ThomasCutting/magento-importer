@@ -26,12 +26,6 @@ class BatchMagentoImporter
     private $compiled_orders;
 
     /**
-     * @var $admin_user_email
-     * This variable hold the admins user email.
-     */
-    private $admin_user_email;
-
-    /**
      * BatchMagentoImporter constructor.
      * --
      * The constructor that handles all pre-processing
