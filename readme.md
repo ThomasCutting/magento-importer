@@ -8,15 +8,45 @@ This package includes a `BatchFileReader` , `BatchCSVProcessor`, and a `BatchMag
 
 ## Usage
 
-Define a certain chunk-size. ( Ex. 1024*1024 )
-`define('CHUNK_SIZE',1024*1024);`
+Define a certain chunk-size. ( Ex. 1024 * 1024 )
+```
+define('CHUNK_SIZE',1024*1024);
+```
 
 Generate the file resource
-`$file = new BatchFileReader(__DIR__.'/file.csv',CHUNK_SIZE);`
+```
+$file = new BatchFileReader(__DIR__.'/file.csv',CHUNK_SIZE);
+```
 
 Process the above resource into a combined, resource array.
-`BatchCSVProcessor::processResourceToArray($file->getFileResource());`
+```
+$import_order_array = BatchCSVProcessor::processResourceToArray($file->getFileResource());
+```
+
+Go ahead and create a new instance of the importer class.
+```
+$importer = new BatchMagentoImporter($import_order_array,__DIR__.'/public_html/shop/app');
+```
+
+Make sure your Magento `app` directory is included correctly.  If so, compile the orders that are included within the `$import_order_array`. ( The compilation process builds Magento orders, and saves them with the status of the imported order. )
+
+```
+if($importer->testMagentoConnection()) {
+	$importer->compileOrders();
+} else {
+	return; // Return error|exception|false
+}
+```
+
+The `above code` should be written within a blank PHP file.  To make sure you have access to the aforementioned classes, use the line below.
+```
+require_once '/path/to/importer/autoload.php';
+```
 
 ## History
 
 02/08/2016, 11:59am - Initial commit.  Includes all functionality except Magento importing.
+
+02/09/2016, 7:27am - Product addition commit.  At this point the `product-add-to-compilation` branch holds all requested functionality.
+
+02/09/2016, 7:31am - Pull Request addition.  Just synchronized the `product-add-to-compilation` branch into the `master` branch.
