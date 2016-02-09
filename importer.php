@@ -292,6 +292,61 @@ class BatchMagentoImporter
     }
 
     /**
+     * customerExists
+     * -
+     * This method checks for a user, if exists - returns them, if not - returns false.
+     *
+     * @param $email
+     * @return bool|false|Mage_Core_Model_Abstract
+     */
+    protected function customerExists($email)
+    {
+        // build customer from model
+        $customer = Mage::getModel('customer/customer');
+
+        // load customer ( by provided email )
+        $customer->loadByEmail($email);
+
+        // either return the customer|false
+        return $customer->getId() ? $customer : false;
+    }
+
+    /**
+     * buildNewCustomer
+     * -
+     * This method builds, generates, and saves a new Mage customer model.
+     *
+     * @param $email
+     * @param $first_name
+     * @param $last_name
+     * @return bool|false|Mage_Core_Model_Abstract
+     */
+    protected function buildNewCustomer($email,$first_name,$last_name)
+    {
+        // build customer variable from model
+        $customer = Mage::getModel('customer/customer');
+
+        // set all current variables
+        $customer
+            ->setWebsiteId(Mage::app()->getWebsite()->getId())
+            ->setStore(Mage::app()->getStore())
+            ->setFirstName($first_name)
+            ->setLastName($last_name)
+            ->setEmail($email);
+
+        // attempt to save the customer
+        try {
+            $customer->save();
+        } catch(Exception $e) {
+            error_log('buildNewCustomer - failed - '.$e->getTraceAsString());
+            return false;
+        }
+
+        // after save - return the new customer.
+        return $customer;
+    }
+
+    /**
      * _getOrderCreateModel
      * -
      * Magento based method that pulls in the 'adminhtml/sales_order_create' singleton model
