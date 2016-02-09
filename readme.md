@@ -1,4 +1,4 @@
-# Gigasavvy Importer.
+# Gigasavvy Magento Importer.
 
 This package includes a `BatchFileReader` , `BatchCSVProcessor`, and a `BatchMagentoImporter`.  The purpose of all of those classes above is to
 
