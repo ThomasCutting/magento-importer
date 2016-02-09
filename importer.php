@@ -239,7 +239,7 @@ class BatchMagentoImporter
 
         // loop through the import order array from current index to keep appending to product array.
         for ($i = $index; $i <= count($this->import_order_array) - 1; $i++) {
-            if (!$this->_traverseSameOrder($index, $base_order['order_id'])) {
+            if ($this->_traverseSameOrder($i, $base_order['order_id']) == $i) {
                 // that's the only item for the user.  Go ahead and don't do anything to the product_arr.
             } else {
                 // there is an item waiting enqueue.
