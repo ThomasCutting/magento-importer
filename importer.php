@@ -33,7 +33,7 @@ class BatchMagentoImporter
      * @param $admin_user_email
      * @param $mage_app_directory
      */
-    public function __construct($import_orders, $admin_user_email, $mage_app_directory = null)
+    public function __construct($import_orders, $mage_app_directory = null)
     {
         // process the request to include mage core ( bootstrap & mage . php )
         if ($mage_app_directory && is_dir($mage_app_directory)) {
@@ -56,9 +56,6 @@ class BatchMagentoImporter
             $this->import_order_array = $import_orders;
 
         }
-
-        // set the admin user email
-        $this->admin_user_email = $admin_user_email;
     }
 
     /**
