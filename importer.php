@@ -26,12 +26,6 @@ class BatchMagentoImporter
     private $compiled_orders;
 
     /**
-     * @var $admin_user_id
-     * This variable holds the identifying number of the current administrator within the magento core site.
-     */
-    private $admin_user_id;
-
-    /**
      * @var $admin_user_email
      * This variable hold the admins user email.
      */
