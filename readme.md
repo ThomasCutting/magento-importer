@@ -8,7 +8,7 @@ This package includes a `BatchFileReader` , `BatchCSVProcessor`, and a `BatchMag
 
 ## Usage
 
-Define a certain chunk-size. ( Ex. 1024 * 1024 )
+Define a certain chunk-size. ( This amount will set the batch-reading pace of the resource within the `BatchFileReader`. )
 ```
 define('CHUNK_SIZE',1024*1024);
 ```
